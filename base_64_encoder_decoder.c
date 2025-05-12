@@ -1,6 +1,8 @@
 #include <math.h>
 #include <stdio.h>
 
+// Converts a decimal number 'num' into its binary representation
+// and stores the result in 'binary' array of given 'size' bits (usually 8)
 void decimal_to_binary(int num, int *binary, int size) {
   for (int i = 0; i < size; i++) {
     binary[i] = 0;
@@ -11,6 +13,8 @@ void decimal_to_binary(int num, int *binary, int size) {
   }
 }
 
+// Converts a subarray of binary bits into decimal
+// The subarray goes from index 'start' to 'end' (non-inclusive)
 int binary_to_decimal(int *binary, int start, int end) {
   int num = 0;
   int power = end - start - 1;
@@ -21,87 +25,67 @@ int binary_to_decimal(int *binary, int start, int end) {
 }
 
 int main() {
-  int binary[800]; // stream to store binary form of line
-  char line[100];  // to store input from user via stdin
+  int binary[800]; // stores the full binary stream of the input string
+  char line[100];  // buffer to read user input from stdin
   char map[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678"
-                 "9+/"; // base64 characters
-  char output[1000];    // to store output
+                 "9+/"; // base64 encoding table
+  char output[1000];    // stores the final base64 encoded string
 
   printf("Enter a string to encode: ");
-  // get users input
-  fgets(line, sizeof(line), stdin);
+  fgets(line, sizeof(line), stdin); // read input string including newline
 
-  // convert input in binary
+  // Convert input characters to binary
   int i = 0;
-  int j = 0;
+  int j = 0; // binary array index
   while (line[i] != '\0' && line[i] != '\n') {
-    int bit = (unsigned char)line[i]; // convert char to ascii
+    int bit = (unsigned char)line[i]; // convert character to ASCII code
     int temp[8];
-    decimal_to_binary(bit, temp, 8);
+    decimal_to_binary(bit, temp, 8); // get 8-bit binary representation
     for (int i = 0; i < 8; i++) {
-      binary[j++] = temp[i];
+      binary[j++] = temp[i]; // append to main binary stream
     }
     i++;
   }
 
-  binary[j] = 999; // j is binary length
-  int k = 0;       // current index of output array
-  int z = 0;       // current index of binary stream
+  int k = 0; // output array index
+  int z = 0; // current position in binary stream
   int binary_len = j;
-  while (z < j) {
-    int buffer_24[24] = {0};
-    int j = 0;
-    int i = 0;
-    // read input in chunks of 8 bit blocks in buffer_24 3 times
-    while (i < 3) {
-      int loop_done = 0;
-      for (int k = 0; k < 8; k++) {
-        if (binary[z] != 999) {
-          buffer_24[j++] = binary[z++];
-        } else {
-          loop_done = 1;
-          break;
-        }
-      }
-      if (loop_done == 0) {
-        i++;
-      } else {
-        break;
-      }
+
+  // Process binary stream in 24-bit chunks
+  while (z < binary_len) {
+    int buffer_24[24] = {0}; // buffer for 24 bits (3 bytes)
+    int bits_in_chunk = 0;
+
+    // Fill buffer with up to 24 bits
+    for (int i = 0; i < 24 && z < binary_len; i++) {
+      buffer_24[i] = binary[z++];
+      bits_in_chunk++;
     }
 
-    // if 'i' <= 2 then we need to do padding
-    int padding = 0;
-    if (i <= 2) {
-      padding = 3 - i;
-    }
-    int padd = padding;
-    while (padding > 0) {
-      buffer_24[j++] = 0;
-      buffer_24[j++] = 0;
-      padding--;
-    }
+    // Determine how many base64 characters this chunk will produce
+    int num_output_chars =
+        (bits_in_chunk + 5) / 6; // ceiling of bits_in_chunk / 6
+    int padding =
+        4 - num_output_chars; // base64 output should always be 4 characters
 
-    // now convert 24 bit blocks to 6 bit blocks
-    // covert those 6 bit blocks to decimal
-    // convert decimal to bsse64 chars
+    // Convert each group of 6 bits to a base64 character
     int start = 0;
     int end = 6;
-
-    for (int i = 0; i < 4 - padd; i++) {
-      int decimal = binary_to_decimal(buffer_24, start, end);
+    for (int i = 0; i < num_output_chars; i++) {
+      int decimal =
+          binary_to_decimal(buffer_24, start, end); // 6-bit group to decimal
+      output[k++] = map[decimal]; // map decimal to base64 character
       start += 6;
       end += 6;
-      output[k++] = map[decimal];
     }
 
-    // now add = for padd
-    while (padd > 0) {
+    // Add '=' padding characters if needed
+    while (padding-- > 0) {
       output[k++] = '=';
-      padd--;
     }
   }
-  output[k] = '\0';
+
+  output[k] = '\0'; // null-terminate the output string
   printf("Encoded string: %s \n", output);
   return 0;
 }
